@@ -117,7 +117,7 @@ paths:
                 type: object
                 required: [service, version, apiVersion, capabilities, schemaVersion, serviceCore]
                 properties:
-                  service: { type: string, enum: [shortlink] }
+                  service: { type: string, enum: [atc-shortlink] }
                   version:
                     type: string
                     description: This service's own package semver — unrelated to `apiVersion`.

@@ -24,7 +24,7 @@ Production with Docker (mount the database directory):
 
 ```bash
 docker build -t atc-shortlink .
-docker run -p 3006:3006 -v shortlink-data:/data --env-file .env atc-shortlink
+docker run -p 3006:3006 -v atc-shortlink-data:/data --env-file .env atc-shortlink
 ```
 
 Tests and type check:
@@ -147,7 +147,7 @@ real cross-connection concurrency tests that prove it.
 
 Requests are logged with `reqId` (accepts or generates `X-Request-Id`) and `traceId`/`spanId` (a
 trusted inbound `traceparent`, gated on `TRUST_PROXY`, continues the caller's trace with a fresh
-span-id for this hop; see [OBSERVABILITY.md](../stack/docs/OBSERVABILITY.md)). `/health` is a static check; `/ready` pings the database, cached for 10s, and
+span-id for this hop; see [OBSERVABILITY.md](../atc-stack/docs/OBSERVABILITY.md)). `/health` is a static check; `/ready` pings the database, cached for 10s, and
 never mutates state. `/metrics` numbers are all live database reads, so they don't reset on restart
 or diverge between processes. See [docs/READINESS.md](docs/READINESS.md) for the full contract.
 
@@ -155,7 +155,7 @@ or diverge between processes. See [docs/READINESS.md](docs/READINESS.md) for the
 
 The only state to protect is the SQLite file at `DB_PATH` (default `./data/shortlink.db`, plus its
 WAL sidecars while running). Use `stack backup`/`stack restore` from the workspace root (see
-`stack/docs/UPGRADE.md`) to snapshot and restore this consistently alongside the rest of the stack.
+`atc-stack/docs/UPGRADE.md`) to snapshot and restore this consistently alongside the rest of the stack.
 On every start, before applying a pending migration to an existing database, the service itself
 also snapshots the file to `DB_PATH.pre-v<N>-<timestamp>` (directory overridable with
 `DB_BACKUP_DIR`) — a manual last resort if `stack restore` is unavailable; migrations reapply

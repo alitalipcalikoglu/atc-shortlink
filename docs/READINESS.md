@@ -1,21 +1,21 @@
-# `shortlink` readiness contract
+# `atc-shortlink` readiness contract
 
 ## Purpose
-`shortlink` lets the rest of the platform turn long URLs into short, brandable, trackable links:
+`atc-shortlink` lets the rest of the platform turn long URLs into short, brandable, trackable links:
 random or custom codes, `301`/`302` redirects with expiry and click limits, a script-free preview
 page, click statistics without storing visitor addresses, and QR codes generated in-process. The
 public redirect path serves end users directly on the short domain; the management API stays
 behind API keys.
 
 ## Dependencies
-- `audit` (`AUDIT_URL` + `AUDIT_API_KEY`): optional, both-or-neither. Identical mechanism to
-  `flags` — `src/net/audit-client.js` is byte-identical between the two services (verified with
+- `atc-audit` (`AUDIT_URL` + `AUDIT_API_KEY`): optional, both-or-neither. Identical mechanism to
+  `atc-flags` — `src/net/audit-client.js` is byte-identical between the two services (verified with
   `diff`). When unset, writes still succeed; when set, write events are buffered in memory and
   flushed on a 2s timer in the background, never on the request path, so an unreachable or slow
   audit service never slows down or fails a shortlink request. Buffered-and-unflushed events are
   lost on an ungraceful restart (no on-disk queue).
 
-No other service or external system is called by `shortlink`. It never fetches redirect
+No other service or external system is called by `atc-shortlink`. It never fetches redirect
 destinations itself (`LinkService.#url` only validates the URL's shape).
 
 ## Persistence
@@ -32,7 +32,7 @@ Schema (one migration block, `Database.MIGRATIONS[0]`):
   CASCADE`), `at`, `visitor` (HMAC, never the raw address), `referrer` (host only), `device`;
   indexes `clicks_code_at(code, at)` and `clicks_at(at)`.
 
-Migration mechanism: identical pattern to `flags` — `Database.MIGRATIONS` is an ordered array of
+Migration mechanism: identical pattern to `atc-flags` — `Database.MIGRATIONS` is an ordered array of
 SQL blocks gated by `PRAGMA user_version`, each applied in its own transaction. Fresh install: file
 created, all migrations run from `user_version = 0`. Upgrade: only migrations beyond the stored
 `user_version` run; today there is exactly one, so both cases behave the same. No down-migration
@@ -44,7 +44,7 @@ process is otherwise alive. Logged at `warn` level.
 
 ## Readiness endpoint
 `GET /ready` calls `this.db.ping()` (`SELECT 1`), cached for `ShortlinkApi.READY_CACHE_MS =
-10_000`ms — identical mechanism to `flags`. A poll inside the cache window touches nothing; a stale
+10_000`ms — identical mechanism to `atc-flags`. A poll inside the cache window touches nothing; a stale
 cache re-pings and on failure caches `{ ok: false, error }` and the route answers `503`. Safe to
 poll at any interval: read-only, no mutation, no discarded in-flight work.
 
@@ -55,11 +55,11 @@ mid-click-write) → `await this.audit.close()` (stop timer, flush what's buffer
 A `30_000`ms unref'd force-exit timer runs in parallel (`process.exit(1)` if shutdown hangs).
 `unhandledRejection` routes through the same graceful path; `uncaughtException` calls
 `process.exit(1)` immediately, skipping drain and final audit flush. PM2 `kill_timeout: 35000`ms in
-`ecosystem.config.cjs` — 5s above the internal 30s force-exit, matching `flags`' configuration
+`ecosystem.config.cjs` — 5s above the internal 30s force-exit, matching `atc-flags`' configuration
 exactly (same comment, same numbers).
 
 ## Resource limits
-- `BODY_LIMIT` (env, default `16_384` bytes / 16 KiB — smaller than `flags`' 64 KiB, since link
+- `BODY_LIMIT` (env, default `16_384` bytes / 16 KiB — smaller than `atc-flags`' 64 KiB, since link
   bodies are just a URL plus metadata, not arbitrary JSON values).
 - `MAX_URL_LENGTH` (env, default `2_048`, range 64–8192) — destination URL character cap.
 - `CODE_LENGTH` (env, default `7`, range 4–16) — generated code length; `LinkService.CODE_ATTEMPTS
@@ -74,16 +74,16 @@ exactly (same comment, same numbers).
 - `max_memory_restart: '300M'` in `ecosystem.config.cjs`.
 
 ## Timeouts
-- Audit outbound call: `timeoutMs = 5_000` default (unchanged by `Application`), same as `flags`.
+- Audit outbound call: `timeoutMs = 5_000` default (unchanged by `Application`), same as `atc-flags`.
 - Shutdown force-exit: `30_000`ms, hard-coded.
 - PM2 `listen_timeout: 10000`ms.
-- No outward per-request timeout beyond the audit client's, because `shortlink` never calls another
+- No outward per-request timeout beyond the audit client's, because `atc-shortlink` never calls another
   service synchronously in the request path — including the redirect path itself, which only reads
   and writes its own database.
 
 ## Retry policy
 Only the audit forwarding path retries, on its own background timer, never in the request path.
-Same numbers as `flags` (byte-identical `AuditClient`): up to `MAX_ATTEMPTS = 6` per batch, backoff
+Same numbers as `atc-flags` (byte-identical `AuditClient`): up to `MAX_ATTEMPTS = 6` per batch, backoff
 `min(30_000, 500 * 2 ** attempt)`ms (500ms → 30s), no jitter; a non-429 4xx drops the batch
 permanently (logged), a 429/5xx/network error/timeout keeps it in the buffer for the next `flushMs
 = 2_000`ms tick after all attempts in the current `#send` call are exhausted.
@@ -126,14 +126,14 @@ strings; nothing else in the platform holds a foreign key into this database).
 - `shortlink_click_rows` — durable, total row count in the `clicks` table.
 - `shortlink_process_uptime_seconds` — process-local (`process.uptime()`), resets on restart.
 
-Unlike `flags`, `shortlink` has **no process-local counters exposed in `/metrics`** — every number
+Unlike `atc-flags`, `atc-shortlink` has **no process-local counters exposed in `/metrics`** — every number
 above is a live database read, so restarting the process (or running a second one) does not change
 what `/metrics` reports.
 
 ## Logging
-Same as `flags`: Fastify default request logger, `requestIdHeader: 'x-request-id'`, `genReqId:
+Same as `atc-flags`: Fastify default request logger, `requestIdHeader: 'x-request-id'`, `genReqId:
 randomUUID`, so `reqId` is on every log line per
-[OBSERVABILITY.md](../../stack/docs/OBSERVABILITY.md); `req.headers.authorization` redacted. Not
+[OBSERVABILITY.md](../../atc-stack/docs/OBSERVABILITY.md); `req.headers.authorization` redacted. Not
 emitted: `traceId`, `spanId`, `route`/`op` (raw `req.url` only), `durationMs` (Fastify's own
 `responseTime` field, different name), `upstream`/`upstreamMs` (no proxied upstream calls),
 `service`, `version`. `code` is in every JSON error body but only additionally logged for 500s via
@@ -150,7 +150,7 @@ forward any request-scoped header), so there's nothing to propagate onward regar
 
 ## Security model
 Bearer API keys (`SHORTLINK_API_KEYS=id:secret[:role]`), compared via SHA-256 + `timingSafeEqual`
-(same pattern as `flags`' `ApiKeyAuth`). Roles: `read`, `write`, `readwrite`. No environment scoping
+(same pattern as `atc-flags`' `ApiKeyAuth`). Roles: `read`, `write`, `readwrite`. No environment scoping
 (shortlink has no environment concept — one instance, one `PUBLIC_BASE_URL`). No secret rotation
 support: edit `SHORTLINK_API_KEYS` and restart. At the boundary: destination URLs must be absolute
 `http(s)`, without embedded credentials, not the service's own host, not matching `BLOCKED_HOSTS`
@@ -160,14 +160,14 @@ authentication: IP + user agent are never stored, only `HMAC(HASH_SECRET, ip + u
 `HASH_SECRET` itself has no rotation support (rotating it changes every future visitor hash without
 being able to correlate against past hashes — that's an accepted trade-off, not a bug). Out of
 scope: authenticating end users following a short link (the redirect is public by design), fetching
-or validating that a destination URL actually resolves (`shortlink` never fetches destinations).
+or validating that a destination URL actually resolves (`atc-shortlink` never fetches destinations).
 
 ## Scaling model
 **B — single-node stateful**: one process owns one SQLite file, `instances: 1` pinned in
-`ecosystem.config.cjs` with the same "one process per SQLite file" comment as `flags`.
+`ecosystem.config.cjs` with the same "one process per SQLite file" comment as `atc-flags`.
 
 Two instances against the same file: the **create/list/stats/read paths** are no less safe than
-`flags`' equivalents — SQLite's own WAL locking serializes writes across processes. The
+`atc-flags`' equivalents — SQLite's own WAL locking serializes writes across processes. The
 **redirect path (`GET /:code`)** used to be the one exception (see below); as of Stage 10 it is
 safe across any number of processes/connections sharing the file too, for the same reason: the
 enforcement is now itself a single SQLite write, not application-level logic straddling a read and
@@ -212,7 +212,7 @@ issue the same `DELETE FROM clicks WHERE at < ?` twice — wasted work, not a co
 since a `DELETE` with no matching rows the second time is a safe no-op.
 
 ## Single-node / multi-node guarantees
-Running more than one `shortlink` instance against the same `DB_PATH` is not a *supported, exercised
+Running more than one `atc-shortlink` instance against the same `DB_PATH` is not a *supported, exercised
 topology* (still pinned to `instances: 1` — no coordination, no shared cache, no leader election —
 this is unchanged), but as of Stage 10 there is no longer a known correctness gap that a second
 instance would expose: every write path, including the redirect/`maxClicks` path, is safe under

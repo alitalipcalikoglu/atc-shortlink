@@ -60,7 +60,7 @@ pm2 reload shortlink
 
 ```bash
 docker build -t atc-shortlink .
-docker run -d -p 3006:3006 -v shortlink-data:/data --env-file .env atc-shortlink
+docker run -d -p 3006:3006 -v atc-shortlink-data:/data --env-file .env atc-shortlink
 ```
 
 ## Logs
