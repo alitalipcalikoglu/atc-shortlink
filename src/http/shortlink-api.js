@@ -12,6 +12,7 @@ import { ApiKeyAuth } from './api-key-auth.js';
 import { PreviewPage } from './preview-page.js';
 import { Schemas } from './schemas.js';
 import { Views } from './views.js';
+import { AuditMetrics } from '../audit-metrics.js';
 
 /** @typedef {import('../config.js').Config} Config */
 /** @typedef {import('fastify').FastifyInstance} FastifyInstance */
@@ -198,6 +199,7 @@ export class ShortlinkApi {
         '# HELP shortlink_click_rows Rows in the click log.',
         '# TYPE shortlink_click_rows gauge',
         `shortlink_click_rows ${this.clicks.count()}`,
+        ...AuditMetrics.lines(this.audit),
         '# HELP shortlink_process_uptime_seconds Process uptime.',
         '# TYPE shortlink_process_uptime_seconds gauge',
         `shortlink_process_uptime_seconds ${process.uptime().toFixed(0)}`,
