@@ -1,6 +1,6 @@
 {
   "name": "@atc-web/atc-shortlink",
-  "version": "1.18.0",
+  "version": "1.19.0",
   "private": true,
   "description": "Short links over HTTP: redirects with expiry and click limits, click statistics, QR codes as SVG or PNG",
   "license": "MIT",
@@ -20,7 +20,7 @@
     "typecheck": "tsc -p jsconfig.json"
   },
   "dependencies": {
-    "@atc-web/atc-service-core": "github:alitalipcalikoglu/atc-service-core#v1.18.0",
+    "@atc-web/atc-service-core": "github:alitalipcalikoglu/atc-service-core#v1.19.0",
     "@fastify/rate-limit": "11.2.0",
     "fastify": "5.12.5"
   },
