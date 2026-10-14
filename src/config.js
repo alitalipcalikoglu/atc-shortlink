@@ -23,6 +23,7 @@ export class Config {
     this.apiKeys = v.apiKeys;
     this.rateLimitMax = v.rateLimitMax;
     this.redirectRateLimitMax = v.redirectRateLimitMax;
+    this.permanentCacheSec = v.permanentCacheSec;
     this.publicBaseUrl = v.publicBaseUrl;
     this.codeLength = v.codeLength;
     this.hashSecret = v.hashSecret;
@@ -66,6 +67,8 @@ export class Config {
       apiKeys: Config.#parseApiKeys(r.required('SHORTLINK_API_KEYS')),
       rateLimitMax: r.integer('RATE_LIMIT_MAX', 600, { min: 1 }),
       redirectRateLimitMax: r.integer('REDIRECT_RATE_LIMIT_MAX', 300, { min: 1 }),
+      // A 301 is cached by browsers and CDNs for this long: disabling or expiring the link only takes effect after it.
+      permanentCacheSec: r.integer('PERMANENT_CACHE_SEC', 300, { min: 0, max: 31_536_000 }),
       publicBaseUrl,
       codeLength: r.integer('CODE_LENGTH', 7, { min: 4, max: 16 }),
       hashSecret,

@@ -72,7 +72,7 @@ test('API: create, redirect, preview, head, gone states, delete', async (t) => {
   assert.equal(json(res).link.permanent, true);
   res = await app.inject({ url: '/promo', headers: UA });
   assert.equal(res.statusCode, 301);
-  assert.equal(res.headers['cache-control'], 'public, max-age=86400');
+  assert.equal(res.headers['cache-control'], 'public, max-age=300');
 
   res = await app.inject({ method: 'PATCH', url: '/v1/links/promo', headers: bearer(RW_KEY), payload: { enabled: false } });
   assert.equal(json(res).link.status, 'disabled');

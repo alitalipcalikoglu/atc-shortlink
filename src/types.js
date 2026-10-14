@@ -26,6 +26,7 @@
  * @property {ApiKey[]} apiKeys
  * @property {number} rateLimitMax
  * @property {number} redirectRateLimitMax
+ * @property {number} permanentCacheSec  Cache-Control max-age of a 301 redirect.
  * @property {string} publicBaseUrl        Origin the short links are served from, no trailing slash.
  * @property {number} codeLength
  * @property {string} hashSecret           Salt for visitor hashing.

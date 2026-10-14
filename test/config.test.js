@@ -25,3 +25,8 @@ test('Config: rejects bad input', () => {
   bad({ CODE_LENGTH: '3' }, /must be >= 4/);
   bad({ TLS_CERT_PATH: '/x.pem' }, /must be set together/);
 });
+
+test('Config: PERMANENT_CACHE_SEC defaults to 5 minutes and accepts 0', () => {
+  assert.equal(Config.fromEnv(testEnv()).permanentCacheSec, 300);
+  assert.equal(Config.fromEnv(testEnv({ PERMANENT_CACHE_SEC: '0' })).permanentCacheSec, 0);
+});

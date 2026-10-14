@@ -13,7 +13,7 @@ cache-control: private, max-age=0, no-cache
 referrer-policy: no-referrer-when-downgrade
 ```
 
-`302` links are re-resolved on every visit, so edits and disabling take effect immediately and every visit is counted. `permanent: true` links answer `301` with `cache-control: public, max-age=86400`: faster for visitors, but browsers stop asking the service for a day, so counts under-report and edits reach only new visitors.
+`302` links are re-resolved on every visit, so edits and disabling take effect immediately and every visit is counted. `permanent: true` links answer `301` with `cache-control: public, max-age=300` (`PERMANENT_CACHE_SEC`, default 5 minutes; `0` sends `no-cache`): faster for visitors, but browsers and CDNs stop asking the service for that long, so counts under-report and edits, disabling and expiry reach cached visitors only after it.
 
 `HEAD` behaves like `GET` (same status and `Location`) and is counted like a visit; link checkers usually identify themselves as bots and are separated in the statistics.
 

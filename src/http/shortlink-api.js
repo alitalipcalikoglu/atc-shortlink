@@ -247,7 +247,7 @@ export class ShortlinkApi {
       const referer = request.headers.referer;
       const { url, permanent } = s.follow(code, { ip: request.ip, userAgent: typeof ua === 'string' ? ua.slice(0, 512) : '', referer: typeof referer === 'string' ? referer : undefined });
       reply.header('referrer-policy', 'no-referrer-when-downgrade');
-      reply.header('cache-control', permanent ? 'public, max-age=86400' : 'private, max-age=0, no-cache');
+      reply.header('cache-control', permanent && this.config.permanentCacheSec > 0 ? `public, max-age=${this.config.permanentCacheSec}` : 'private, max-age=0, no-cache');
       return reply.redirect(url, permanent ? 301 : 302);
     };
     pub.get('/:code', { schema: { params: Schemas.publicParams } }, follow);
