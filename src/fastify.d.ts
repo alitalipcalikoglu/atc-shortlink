@@ -7,6 +7,6 @@ declare module 'fastify' {
     apiKeyRole: import('./types.js').KeyRole;
   }
   interface FastifyContextConfig {
-    audit?: import('@atc-web/service-core/audit').AuditRouteConfig;
+    audit?: import('@atc-web/atc-service-core/audit').AuditRouteConfig;
   }
 }

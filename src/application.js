@@ -1,7 +1,7 @@
 import { Config } from './config.js';
-import { AuditClient } from '@atc-web/service-core/audit';
-import { readServiceVersion } from '@atc-web/service-core/fastify';
-import { Lifecycle } from '@atc-web/service-core/lifecycle';
+import { AuditClient } from '@atc-web/atc-service-core/audit';
+import { readServiceVersion } from '@atc-web/atc-service-core/fastify';
+import { Lifecycle } from '@atc-web/atc-service-core/lifecycle';
 import { Database } from './db.js';
 import { LinkService } from './domain/link-service.js';
 import { Visitor } from './domain/visitor.js';

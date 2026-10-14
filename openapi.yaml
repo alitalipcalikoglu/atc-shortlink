@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: shortlink
+  title: atc-shortlink
   version: 1.1.0
   description: |
     Short links over HTTP: redirects with expiry and click limits, click statistics, QR codes as
@@ -37,7 +37,7 @@ tags:
 paths:
   /openapi.yaml:
     get:
-      operationId: shortlink.openapi
+      operationId: atc-shortlink.openapi
       summary: Download the canonical OpenAPI document
       description: Returns this service's repository-root OpenAPI 3.1 document byte-for-byte.
       security: []
@@ -53,7 +53,7 @@ paths:
   # ---------------------------------------------------------------------------------------------
   /health:
     get:
-      operationId: shortlink.health.get
+      operationId: atc-shortlink.health.get
       summary: Liveness probe
       description: Always `200`. Does not check any dependency.
       tags: [Operational]
@@ -72,7 +72,7 @@ paths:
 
   /ready:
     get:
-      operationId: shortlink.ready.get
+      operationId: atc-shortlink.ready.get
       summary: Readiness probe
       description: |
         Runs `db.ping()`, result cached for 10 seconds. `200` when the database is reachable,
@@ -103,7 +103,7 @@ paths:
 
   /v1/info:
     get:
-      operationId: shortlink.info.get
+      operationId: atc-shortlink.info.get
       summary: Service identity and capabilities
       tags: [Operational]
       security: []
@@ -132,11 +132,11 @@ paths:
                     description: The open SQLite database schema version (`PRAGMA user_version`).
                   serviceCore:
                     type: string
-                    description: Version of `@atc-web/service-core` actually running.
+                    description: Version of `@atc-web/atc-service-core` actually running.
 
   /robots.txt:
     get:
-      operationId: shortlink.robots.get
+      operationId: atc-shortlink.robots.get
       summary: Robots exclusion file
       description: |
         Static `text/plain` response disallowing all crawling (`User-agent: *` / `Disallow: /`) —
@@ -161,7 +161,7 @@ paths:
   # ---------------------------------------------------------------------------------------------
   /metrics:
     get:
-      operationId: shortlink.metrics.get
+      operationId: atc-shortlink.metrics.get
       summary: Prometheus metrics
       description: |
         Authenticated (any valid key with `read` access — `read` or `readwrite`), but **not**
@@ -189,7 +189,7 @@ paths:
 
   /v1/links:
     post:
-      operationId: shortlink.links.create
+      operationId: atc-shortlink.links.create
       summary: Create a short link
       description: |
         Requires the `write` role. `slug` is optional — omitted, a random unbiased base62 code of
@@ -244,7 +244,7 @@ paths:
           $ref: '#/components/responses/RateLimited'
 
     get:
-      operationId: shortlink.links.list
+      operationId: atc-shortlink.links.list
       summary: List links
       description: Requires `read` access. Keyset pagination, newest first.
       tags: [Links]
@@ -280,7 +280,7 @@ paths:
 
   /v1/links/{code}:
     get:
-      operationId: shortlink.links.get
+      operationId: atc-shortlink.links.get
       summary: Get a link
       description: Requires `read` access.
       tags: [Links]
@@ -312,7 +312,7 @@ paths:
           $ref: '#/components/responses/RateLimited'
 
     patch:
-      operationId: shortlink.links.patch
+      operationId: atc-shortlink.links.patch
       summary: Update a link
       description: |
         Requires the `write` role. Partial update — every property is optional but at least one
@@ -357,7 +357,7 @@ paths:
           $ref: '#/components/responses/RateLimited'
 
     delete:
-      operationId: shortlink.links.delete
+      operationId: atc-shortlink.links.delete
       summary: Delete a link
       description: Requires the `write` role. Permanent — the code becomes available for reuse.
       tags: [Links]
@@ -382,7 +382,7 @@ paths:
 
   /v1/links/{code}/stats:
     get:
-      operationId: shortlink.links.getStats
+      operationId: atc-shortlink.links.getStats
       summary: Click statistics for one link
       description: Requires `read` access. `days` is the lookback window (default 7 is service-wide; this route's own default is 30).
       tags: [Stats]
@@ -412,7 +412,7 @@ paths:
 
   /v1/links/{code}/qr:
     get:
-      operationId: shortlink.links.getQr
+      operationId: atc-shortlink.links.getQr
       summary: QR code for a link (management)
       description: |
         Requires `read` access. Unlike the public `GET /{code}/qr`, this works on a link in **any**
@@ -445,7 +445,7 @@ paths:
 
   /v1/qr:
     get:
-      operationId: shortlink.qr.getForText
+      operationId: atc-shortlink.qr.getForText
       summary: QR code for arbitrary text
       description: |
         Requires `read` access. Encodes the caller-supplied `text` query parameter verbatim — not
@@ -480,7 +480,7 @@ paths:
 
   /v1/stats:
     get:
-      operationId: shortlink.stats.get
+      operationId: atc-shortlink.stats.get
       summary: Service-wide click statistics
       description: Requires `read` access. `days` lookback window, default 7.
       tags: [Stats]
@@ -510,7 +510,7 @@ paths:
   # ---------------------------------------------------------------------------------------------
   /{code}/qr:
     get:
-      operationId: shortlink.qr.getPublic
+      operationId: atc-shortlink.qr.getPublic
       summary: QR code for a link (public)
       description: |
         No authentication. Works only when the link's current status is `active` — any other
@@ -540,7 +540,7 @@ paths:
 
   /{code}:
     get:
-      operationId: shortlink.redirect.follow
+      operationId: atc-shortlink.redirect.follow
       summary: Follow a short link, or preview it
       description: |
         No authentication. One route, two behaviors selected purely by whether the `code` path

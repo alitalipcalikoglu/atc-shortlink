@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { AuditClient } from '@atc-web/service-core/audit';
+import { AuditClient } from '@atc-web/atc-service-core/audit';
 import { RW_KEY, READ_KEY, bearer, buildApp } from './helpers.js';
 
 const json = (/** @type {import('light-my-request').Response} */ r) => JSON.parse(r.body);
@@ -44,11 +44,11 @@ test('API: write routes record audit events with actor, target and request conte
   assert.ok(res.statusCode < 300, res.body);
   assert.equal(audit.buffer.length, 1);
   const e = audit.buffer[0];
-  assert.deepEqual([e.action, e.outcome, e.actor, e.target, e.userAgent, typeof e.requestId, typeof e.id, e.ip], ['shortlink.link.create', 'success', { type: 'apikey', id: e.actor?.id }, { type: 'link', id: json(res).link.code }, 'test-agent', 'string', 'string', '127.0.0.1']);
+  assert.deepEqual([e.action, e.outcome, e.actor, e.target, e.userAgent, typeof e.requestId, typeof e.id, e.ip], ['atc-shortlink.link.create', 'success', { type: 'apikey', id: e.actor?.id }, { type: 'link', id: json(res).link.code }, 'test-agent', 'string', 'string', '127.0.0.1']);
   assert.ok(e.actor?.id);
   const denied = await app.inject({ method: 'POST', url: '/v1/links', headers: bearer(READ_KEY), payload: { url: 'https://example.com/a' } });
   assert.equal(denied.statusCode, 403);
-  assert.deepEqual([audit.buffer.length, audit.buffer[1].action, audit.buffer[1].outcome], [2, 'shortlink.link.create', 'denied']);
+  assert.deepEqual([audit.buffer.length, audit.buffer[1].action, audit.buffer[1].outcome], [2, 'atc-shortlink.link.create', 'denied']);
   await app.inject({ url: '/v1/nope', headers: bearer(RW_KEY) });
   assert.equal(audit.buffer.length, 2, 'reads and 404s are not audit events');
 });

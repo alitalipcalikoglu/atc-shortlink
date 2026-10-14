@@ -15,9 +15,9 @@ One event per completed write request, `outcome: "success"` for 2xx, `outcome: "
 
 | Action | Request |
 |---|---|
-| `shortlink.link.create` | `POST /v1/links` |
-| `shortlink.link.update` | `PATCH /v1/links/:code` |
-| `shortlink.link.delete` | `DELETE /v1/links/:code` |
+| `atc-shortlink.link.create` | `POST /v1/links` |
+| `atc-shortlink.link.update` | `PATCH /v1/links/:code` |
+| `atc-shortlink.link.delete` | `DELETE /v1/links/:code` |
 
 ## Event shape
 
@@ -25,7 +25,7 @@ One event per completed write request, `outcome: "success"` for 2xx, `outcome: "
 {
   "id": "0f1a…",
   "at": "2026-09-17T10:00:00.000Z",
-  "action": "shortlink.link.create",
+  "action": "atc-shortlink.link.create",
   "outcome": "success",
   "actor": { "type": "apikey", "id": "console" },
   "target": { "type": "…", "id": "…" },

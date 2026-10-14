@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import rateLimit from '@fastify/rate-limit';
 import Fastify from 'fastify';
-import { AuditClient } from '@atc-web/service-core/audit';
-import { createErrorHandler, registerInfo, registerOpenApi, registerProbes, registerRequestContext, requestOptions } from '@atc-web/service-core/fastify';
+import { AuditClient } from '@atc-web/atc-service-core/audit';
+import { createErrorHandler, registerInfo, registerOpenApi, registerProbes, registerRequestContext, requestOptions } from '@atc-web/atc-service-core/fastify';
 import { LinkError } from '../domain/errors.js';
 import { LinkService } from '../domain/link-service.js';
 import { Slug } from '../domain/slug.js';
@@ -35,7 +35,7 @@ export class ShortlinkApi {
    * @param {import('../db.js').Database} deps.db
    * @param {string} deps.version
    * @param {import('../types.js').Logger} [deps.logger]
-   * @param {import('@atc-web/service-core/audit').AuditClient} [deps.audit]
+   * @param {import('@atc-web/atc-service-core/audit').AuditClient} [deps.audit]
    */
   constructor({ config, audit, service, links, clicks, db, version, logger }) {
     this.config = config;
@@ -80,7 +80,7 @@ export class ShortlinkApi {
     registerProbes(app, () => this.db.ping(), { cacheMs: ShortlinkApi.READY_CACHE_MS });
     registerOpenApi(app, new URL('../../openapi.yaml', import.meta.url));
     registerInfo(app, {
-      service: 'shortlink',
+      service: 'atc-shortlink',
       version: this.version,
       capabilities: ['qr-codes', 'click-limits'],
       schemaVersion: this.db.schemaVersion,
@@ -130,7 +130,7 @@ export class ShortlinkApi {
     const write = { preHandler: ApiKeyAuth.require('write') };
     const code = (/** @type {FastifyRequest} */ r) => /** @type {{ code: string }} */ (r.params).code;
 
-    api.post('/links', { config: { audit: AuditClient.route('shortlink.link.create', (_r, b) => ({ type: 'link', id: b.link.code })) }, ...write, schema: { body: Schemas.create } }, async (request, reply) => {
+    api.post('/links', { config: { audit: AuditClient.route('atc-shortlink.link.create', (_r, b) => ({ type: 'link', id: b.link.code })) }, ...write, schema: { body: Schemas.create } }, async (request, reply) => {
       const row = s.create(/** @type {any} */ (request.body), request.apiKeyId);
       reply.header('location', `/v1/links/${row.code}`);
       return reply.code(201).send({ link: this.views.link(row) });
@@ -145,11 +145,11 @@ export class ShortlinkApi {
 
     api.get('/links/:code', { ...read, schema: { params: Schemas.codeParams } }, async (request) => ({ link: this.views.link(s.get(code(request))) }));
 
-    api.patch('/links/:code', { config: { audit: AuditClient.route('shortlink.link.update', (r) => ({ type: 'link', id: /** @type {any} */ (r.params).code }), (r) => ({ patch: r.body })) }, ...write, schema: { params: Schemas.codeParams, body: Schemas.patch } }, async (request) => ({
+    api.patch('/links/:code', { config: { audit: AuditClient.route('atc-shortlink.link.update', (r) => ({ type: 'link', id: /** @type {any} */ (r.params).code }), (r) => ({ patch: r.body })) }, ...write, schema: { params: Schemas.codeParams, body: Schemas.patch } }, async (request) => ({
       link: this.views.link(s.update(code(request), /** @type {any} */ (request.body))),
     }));
 
-    api.delete('/links/:code', { config: { audit: AuditClient.route('shortlink.link.delete', (r) => ({ type: 'link', id: /** @type {any} */ (r.params).code })) }, ...write, schema: { params: Schemas.codeParams } }, async (request, reply) => {
+    api.delete('/links/:code', { config: { audit: AuditClient.route('atc-shortlink.link.delete', (r) => ({ type: 'link', id: /** @type {any} */ (r.params).code })) }, ...write, schema: { params: Schemas.codeParams } }, async (request, reply) => {
       s.remove(code(request));
       return reply.code(204).send();
     });

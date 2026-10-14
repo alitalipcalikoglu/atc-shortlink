@@ -32,7 +32,7 @@ test('API: /v1/info', async (t) => {
   const { app } = await buildApp();
   t.after(() => app.close());
   const info = json(await app.inject({ url: '/v1/info' }));
-  assert.equal(info.service, 'shortlink');
+  assert.equal(info.service, 'atc-shortlink');
   assert.equal(info.version, PACKAGE_VERSION);
   assert.equal(info.apiVersion, 'v1');
   assert.deepEqual(info.capabilities, ['qr-codes', 'click-limits']);

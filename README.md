@@ -1,4 +1,4 @@
-# shortlink
+# atc-shortlink
 
 Short links for applications: random codes or custom slugs, `301`/`302` redirects with expiry and click limits, a `+` preview page, click statistics without storing addresses, and QR codes as SVG or PNG from a built-in encoder. HTTP only; the public side runs on your short domain, the management API stays behind API keys.
 
