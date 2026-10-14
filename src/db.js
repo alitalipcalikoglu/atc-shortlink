@@ -33,5 +33,17 @@ export class Database extends CoreDatabase {
     CREATE INDEX clicks_code_at ON clicks (code, at);
     CREATE INDEX clicks_at ON clicks (at);
     `,
+    `
+    -- Daily roll-up of click rows older than CLICK_RAW_DAYS: the raw log stays small, the history stays.
+    CREATE TABLE click_days (
+      code     TEXT NOT NULL REFERENCES links(code) ON DELETE CASCADE,
+      day      INTEGER NOT NULL,
+      clicks   INTEGER NOT NULL,
+      bots     INTEGER NOT NULL,
+      visitors INTEGER NOT NULL,
+      PRIMARY KEY (code, day)
+    );
+    CREATE INDEX click_days_day ON click_days (day);
+    `,
   ];
 }

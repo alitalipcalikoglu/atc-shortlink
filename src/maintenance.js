@@ -9,7 +9,7 @@ export class Maintenance {
    * @param {object} deps
    * @param {import('./store/click-store.js').ClickStore} deps.clicks
    * @param {import('./types.js').Logger} deps.log
-   * @param {{ clickRetentionDays: number }} deps.options
+   * @param {{ clickRetentionDays: number, clickRawDays: number }} deps.options
    */
   constructor({ clicks, log, options }) {
     this.clicks = clicks;
@@ -34,8 +34,10 @@ export class Maintenance {
   /** @param {number} [now] */
   run(now = Date.now()) {
     try {
+      // Whole days only, so a day is never rolled up twice from two halves.
+      const rolled = this.clicks.rollup(Math.floor((now - this.options.clickRawDays * 86_400_000) / 86_400_000) * 86_400_000);
       const deleted = this.clicks.purge(now - this.options.clickRetentionDays * 86_400_000);
-      if (deleted) this.log.info({ deleted }, 'retention purge removed click rows');
+      if (rolled || deleted) this.log.info({ rolled, deleted }, 'click retention');
       return deleted;
     } catch (err) {
       this.log.error({ err }, 'maintenance failed');

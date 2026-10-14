@@ -28,9 +28,12 @@ export class Config {
     this.codeLength = v.codeLength;
     this.hashSecret = v.hashSecret;
     this.clickRetentionDays = v.clickRetentionDays;
+    this.clickRawDays = v.clickRawDays;
+    this.clickFlushMs = v.clickFlushMs;
     this.blockedHosts = v.blockedHosts;
     this.maxUrlLength = v.maxUrlLength;
     this.defaultPermanent = v.defaultPermanent;
+    if (this.clickRawDays > this.clickRetentionDays) throw new ConfigError('CLICK_RAW_DAYS must not exceed CLICK_RETENTION_DAYS');
     Object.freeze(this);
   }
 
@@ -73,6 +76,8 @@ export class Config {
       codeLength: r.integer('CODE_LENGTH', 7, { min: 4, max: 16 }),
       hashSecret,
       clickRetentionDays: r.integer('CLICK_RETENTION_DAYS', 365, { min: 1 }),
+      clickRawDays: r.integer('CLICK_RAW_DAYS', 30, { min: 1 }),
+      clickFlushMs: r.integer('CLICK_FLUSH_MS', 1_000, { min: 50, max: 60_000 }),
       blockedHosts: r.optional('BLOCKED_HOSTS').split(',').map((h) => h.trim().toLowerCase()).filter(Boolean),
       maxUrlLength: r.integer('MAX_URL_LENGTH', 2_048, { min: 64, max: 8_192 }),
       defaultPermanent: r.boolean('DEFAULT_PERMANENT', false),

@@ -154,18 +154,14 @@ export class LinkService {
       if (!row) throw new LinkError('LINK_NOT_FOUND', 'link not found');
       const status = LinkService.status(row, now);
       if (status !== 'active') throw new LinkError('LINK_GONE', `link is ${status}`, { status });
-      this.db.transaction(() => {
-        this.clicks.record({ code, at: now, visitor: this.visitor.hash(hit.ip, hit.userAgent), referrer: Visitor.referrerHost(hit.referer, this.options.publicHost), device });
-      });
+      this.clicks.record({ code, at: now, visitor: this.visitor.hash(hit.ip, hit.userAgent), referrer: Visitor.referrerHost(hit.referer, this.options.publicHost), device });
       return { url: row.url, permanent: row.permanent === 1 };
     }
 
-    let claimed = false;
-    this.db.transaction(() => {
-      claimed = this.links.hitIfActive(code, now);
-      if (claimed) this.clicks.record({ code, at: now, visitor: this.visitor.hash(hit.ip, hit.userAgent), referrer: Visitor.referrerHost(hit.referer, this.options.publicHost), device });
-    });
+    // The counter is the exact number and enforces maxClicks: one atomic write. The click row is detail, buffered.
+    const claimed = this.links.hitIfActive(code, now);
     if (!claimed) throw LinkService.#followFailure(this.links.byCode(code), now);
+    this.clicks.record({ code, at: now, visitor: this.visitor.hash(hit.ip, hit.userAgent), referrer: Visitor.referrerHost(hit.referer, this.options.publicHost), device });
     const row = /** @type {LinkRow} */ (this.links.byCode(code));
     return { url: row.url, permanent: row.permanent === 1 };
   }

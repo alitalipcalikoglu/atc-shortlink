@@ -15,7 +15,7 @@ Referrers from the service's own host are dropped (the preview page's **Continue
 
 ## Retention
 
-`CLICK_RETENTION_DAYS` (default 365): older click rows are deleted hourly. The `clicks` counter and `lastClickAt` on each link are kept forever, so lifetime totals survive; only per-day series, referrers and devices are bounded.
+`CLICK_RETENTION_DAYS` (default 365): older click data is deleted hourly. Click rows older than `CLICK_RAW_DAYS` (default 30) are first rolled up into one row per link and day (clicks, bots and unique visitors of that day) and the raw rows, with their visitor hashes, referrers and devices, are deleted; so the table stays small and statistics keep working over the full retention window. For the rolled-up part, `visitors` is the sum of the daily unique counts, and referrers and devices cover the raw window only. The `clicks` counter and `lastClickAt` on each link are kept forever, so lifetime totals survive; only per-day series, referrers and devices are bounded.
 
 ## Visitors' exposure to destinations
 

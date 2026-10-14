@@ -30,6 +30,8 @@
  * @property {string} publicBaseUrl        Origin the short links are served from, no trailing slash.
  * @property {number} codeLength
  * @property {string} hashSecret           Salt for visitor hashing.
+ * @property {number} clickRawDays        Click rows older than this are rolled up into one row per link and day.
+ * @property {number} clickFlushMs         Buffered click rows are written at least this often.
  * @property {number} clickRetentionDays
  * @property {string[]} blockedHosts       Lower-case; exact or parent-domain match.
  * @property {number} maxUrlLength

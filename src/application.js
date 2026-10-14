@@ -53,13 +53,15 @@ export class Application {
     const api = new ShortlinkApi({ config, audit: this.audit, service: this.service, links: this.links, clicks: this.clicks, db: this.db, version: this.version });
     const app = await api.build();
     this.app = app;
-    this.maintenance = new Maintenance({ clicks: this.clicks, log: app.log.child({ component: 'maintenance' }), options: { clickRetentionDays: config.clickRetentionDays } });
+    this.maintenance = new Maintenance({ clicks: this.clicks, log: app.log.child({ component: 'maintenance' }), options: { clickRetentionDays: config.clickRetentionDays, clickRawDays: config.clickRawDays } });
+    this.clicks.start(config.clickFlushMs);
     const { shutdown } = Lifecycle.install({
       forceExitMs: 30_000,
       log: app.log,
       steps: [
         () => this.maintenance?.stop(),
         () => this.app?.close(),
+        () => this.clicks.close(),
         () => this.audit.close(),
         () => this.db.close(),
       ],

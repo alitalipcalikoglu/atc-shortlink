@@ -206,10 +206,48 @@ test('Maintenance: purges old click rows only', async (t) => {
   const now = Date.now();
   clicks.record({ code: 'old-one', at: now - 400 * day, visitor: 'v', referrer: null, device: 'desktop' });
   clicks.record({ code: 'old-one', at: now - 1 * day, visitor: 'v', referrer: null, device: 'desktop' });
-  const m = new Maintenance({ clicks, log: /** @type {any} */ ({ info() {}, error() {} }), options: { clickRetentionDays: 365 } });
+  const m = new Maintenance({ clicks, log: /** @type {any} */ ({ info() {}, error() {} }), options: { clickRetentionDays: 365, clickRawDays: 30 } });
   assert.equal(m.run(now), 1);
   assert.equal(clicks.count(), 1);
   assert.ok(links.byCode('old-one'));
   m.start(); m.stop();
   assert.equal(m.timer, null);
+});
+
+test('clicks: rows are buffered and flushed together; stats and reads see them at once; the counter is exact either way', async (t) => {
+  const { app, clicks, links } = await buildApp();
+  t.after(() => app.close());
+  await app.inject({ method: 'POST', url: '/v1/links', headers: bearer(RW_KEY), payload: { url: 'https://example.com', slug: 'buffered', maxClicks: 3 } });
+  const follow = () => app.inject({ url: '/buffered', headers: { 'user-agent': 'Mozilla/5.0 (X11; Linux) Chrome/120' } });
+  for (let i = 0; i < 3; i += 1) assert.equal((await follow()).statusCode, 302);
+  assert.equal(clicks.buffer.length, 3, 'nothing written yet, the redirects only touched the counter');
+  assert.equal((await follow()).statusCode, 410, 'maxClicks is exact without the click log');
+  assert.equal(links.byCode('buffered')?.clicks, 3);
+  const stats = JSON.parse((await app.inject({ url: '/v1/links/buffered/stats', headers: bearer(RW_KEY) })).body);
+  assert.deepEqual([stats.clicks, clicks.buffer.length], [3, 0], 'reading flushes');
+  clicks.record({ code: 'deleted-meanwhile', at: Date.now(), visitor: 'v', referrer: null, device: 'desktop' });
+  assert.equal(clicks.flush(), 1);
+  assert.equal(clicks.count(), 3, 'a row of a link that is gone is dropped, not an error');
+  for (let i = 0; i < 500; i += 1) clicks.record({ code: 'buffered', at: Date.now(), visitor: `v${i}`, referrer: null, device: 'desktop' });
+  assert.equal(clicks.buffer.length, 0, 'a full buffer flushes itself');
+});
+
+test('click roll-up: rows older than the raw window become one row per link and day; stats still add up; retention drops old days', async (t) => {
+  const { app, clicks } = await buildApp();
+  t.after(() => app.close());
+  await app.inject({ method: 'POST', url: '/v1/links', headers: bearer(RW_KEY), payload: { url: 'https://example.com', slug: 'rolled' } });
+  const day = 86_400_000;
+  const base = Math.floor(Date.now() / day) * day;
+  const add = (/** @type {number} */ daysAgo, /** @type {string} */ visitor, /** @type {'desktop'|'bot'} */ device = 'desktop') => clicks.record({ code: 'rolled', at: base - daysAgo * day + 1_000, visitor, referrer: null, device });
+  add(40, 'a'); add(40, 'a'); add(40, 'b'); add(40, 'bot1', 'bot'); add(39, 'a'); add(2, 'c');
+  const m = new Maintenance({ clicks, log: /** @type {any} */ ({ info() {}, error() {} }), options: { clickRetentionDays: 365, clickRawDays: 30 } });
+  m.run(base + 5_000);
+  assert.equal(clicks.count(), 1, 'only the recent raw row is left');
+  const stats = JSON.parse((await app.inject({ url: '/v1/links/rolled/stats?days=60', headers: bearer(RW_KEY) })).body);
+  assert.deepEqual([stats.clicks, stats.bots, stats.byDay.map((/** @type {any} */ d) => [d.clicks, d.visitors])], [6, 1, [[3, 2], [1, 1], [1, 1]]], 'totals include the rolled-up days; the day list is complete');
+  m.run(base + 5_000); // nothing left to roll up
+  assert.equal(JSON.parse((await app.inject({ url: '/v1/links/rolled/stats?days=60', headers: bearer(RW_KEY) })).body).clicks, 6);
+  const later = new Maintenance({ clicks, log: /** @type {any} */ ({ info() {}, error() {} }), options: { clickRetentionDays: 10, clickRawDays: 5 } });
+  later.run(base + 5_000);
+  assert.equal(JSON.parse((await app.inject({ url: '/v1/links/rolled/stats?days=60', headers: bearer(RW_KEY) })).body).clicks, 1, 'days past the retention are gone');
 });

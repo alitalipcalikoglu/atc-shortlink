@@ -12,6 +12,7 @@ Scenario-driven walkthroughs of every feature. Requests to `/v1/*` need `Authori
 | [Listing and search](listing.md) | Filters, tags, status, pagination |
 | [API keys and roles](keys-and-roles.md) | Read, write, readwrite keys; rate limits |
 | [Privacy and retention](privacy.md) | What is stored about visitors, hashing, click retention |
+| [Click recording and roll-up](click-recording.md) | Buffered click rows, the exact counter, daily roll-up of old clicks |
 | [Operations](operations.md) | Health, readiness, metrics, environment, PM2, Docker, reverse proxy |
 | [Audit events](audit-events.md) | Which write actions are forwarded to the audit service, event shape, configuration |
 
