@@ -16,6 +16,7 @@ One event per completed write request, `outcome: "success"` for 2xx, `outcome: "
 | Action | Request |
 |---|---|
 | `atc-shortlink.link.create` | `POST /v1/links` |
+| `atc-shortlink.link.batch` | `POST /v1/links/batch` (one event per batch; meta `{ created, failed, codes }`) |
 | `atc-shortlink.link.update` | `PATCH /v1/links/:code` |
 | `atc-shortlink.link.delete` | `DELETE /v1/links/:code` |
 

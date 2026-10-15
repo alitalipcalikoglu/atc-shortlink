@@ -34,6 +34,8 @@
  * @property {number} clickFlushMs         Buffered click rows are written at least this often.
  * @property {number} clickRetentionDays
  * @property {string[]} blockedHosts       Lower-case; exact or parent-domain match.
+ * @property {string|null} safeBrowsingApiKey  Google Safe Browsing key; null = no reputation check.
+ * @property {number} safeBrowsingTimeoutMs
  * @property {number} maxUrlLength
  * @property {boolean} defaultPermanent
  */

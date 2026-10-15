@@ -229,7 +229,7 @@ paths:
                   link:
                     $ref: '#/components/schemas/Link'
         '400':
-          description: Bad request — one of `VALIDATION_FAILED`, `INVALID_URL`, `HOST_BLOCKED`, `INVALID_EXPIRY`, or `SLUG_RESERVED` (see description).
+          description: Bad request — one of `VALIDATION_FAILED`, `INVALID_URL`, `HOST_BLOCKED`, `URL_UNSAFE` (listed by Safe Browsing, only with `SAFE_BROWSING_API_KEY`), `INVALID_EXPIRY`, or `SLUG_RESERVED` (see description).
           content:
             application/json:
               schema:
@@ -275,6 +275,77 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /v1/links/batch:
+    post:
+      operationId: atc-shortlink.links.batch
+      summary: Create many short links
+      description: |
+        Requires the `write` role. 1-500 items, each shaped like `POST /v1/links`. Items are
+        independent: each one is created or fails with its own error code, in request order (a
+        slug repeated inside the batch fails as `SLUG_TAKEN` after the first). With
+        `SAFE_BROWSING_API_KEY` set, all URLs are checked in one lookup. Body limit 2 MiB.
+      tags: [Links]
+      security:
+        - ApiKeyAuth: []
+      x-stack-visibility: authenticated
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [links]
+              properties:
+                links:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  items: { $ref: '#/components/schemas/LinkCreate' }
+      responses:
+        '200':
+          description: Per-item results.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [created, failed, results]
+                properties:
+                  created: { type: integer, minimum: 0 }
+                  failed: { type: integer, minimum: 0 }
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      required: [index]
+                      properties:
+                        index: { type: integer, minimum: 0 }
+                        link: { $ref: '#/components/schemas/Link' }
+                        error:
+                          type: object
+                          required: [code, message]
+                          properties:
+                            code: { type: string }
+                            message: { type: string }
+        '400':
+          description: "`VALIDATION_FAILED` — the batch itself is malformed (empty, more than 500 items, or an item fails the schema)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '413':
+          description: "`FST_ERR_CTP_BODY_TOO_LARGE` — body above 2 MiB."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
         '429':
           $ref: '#/components/responses/RateLimited'
 
@@ -342,7 +413,7 @@ paths:
                   link:
                     $ref: '#/components/schemas/Link'
         '400':
-          description: One of `VALIDATION_FAILED`, `INVALID_URL`, or `INVALID_EXPIRY`.
+          description: One of `VALIDATION_FAILED`, `INVALID_URL`, `HOST_BLOCKED`, `URL_UNSAFE`, or `INVALID_EXPIRY`.
           content:
             application/json:
               schema:

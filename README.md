@@ -63,6 +63,7 @@ Errors are JSON: `{ "error": { "code", "message", "details?" } }`.
 | GET | `/:code/qr` | none | QR of the short URL, `format=svg|png`, `scale=1..20`, `margin=0..8`. Active links only. |
 | GET | `/robots.txt` | none | Disallow all. |
 | POST | `/v1/links` | write | `{ url, slug?, permanent?, expiresAt?, maxClicks?, tags?, note? }` → `201 { link }`. |
+| POST | `/v1/links/batch` | write | `{ links: [ …same items… ] }` (1–500) → `200 { created, failed, results: [{ index, link } \| { index, error: { code, message } }] }`; each item succeeds or fails on its own. |
 | GET | `/v1/links` | read | Newest first; `q`, `tag`, `status`, `createdBy`, `limit` ≤ 200, `cursor`. |
 | GET / PATCH / DELETE | `/v1/links/:code` | read / write / write | Read; edit any subset (`expiresAt`/`maxClicks` accept `null`); delete. |
 | GET | `/v1/links/:code/stats` | read | `days` (default 30): totals, unique visitors, bots, per day, referrers, devices, recent. |
@@ -98,6 +99,7 @@ Behind a reverse proxy set `TRUST_PROXY=true`; deny `/v1/` and `/metrics` on the
 ## Security notes
 
 - Destination URLs must be absolute `http(s)`, without credentials, not the service's own host, not in `BLOCKED_HOSTS`. The service never fetches destinations.
+- Optional malicious-URL check: with `SAFE_BROWSING_API_KEY` set, every new or changed destination (single, batch, `PATCH`) is looked up in the Google Safe Browsing Lookup API (v4: malware, social engineering, unwanted software) and refused with `400 URL_UNSAFE`. The check is fail-open: a timeout (`SAFE_BROWSING_TIMEOUT_MS`, default 3000) or API error accepts the URL and logs it, counted in `shortlink_safe_browsing_failures_total`. The destination URLs are sent to Google; leave the key empty if that is not acceptable. Links created earlier are not rechecked.
 - Redirect targets come only from the database; the `Location` header is never built from request input.
 - Preview and QR responses carry strict `Content-Security-Policy` (`default-src 'none'`, QR SVG sandboxed); all responses `X-Content-Type-Options: nosniff`; API responses `Cache-Control: no-store`.
 - Public side rate limited per address, API per key; keys compared in constant time; unknown fields rejected; bodies capped at `BODY_LIMIT`.
@@ -114,7 +116,8 @@ Class-based; dependencies are injected through constructors, `src/application.js
 | `Config` | `src/config.js` | Validated environment |
 | `Database` | `src/db.js` | SQLite connection, migrations, transactions |
 | `LinkStore`, `ClickStore` | `src/store/` | Persistence and aggregates |
-| `LinkService`, `Cursor` | `src/domain/link-service.js` | Create, update, list, follow, statistics |
+| `LinkService`, `Cursor` | `src/domain/link-service.js` | Create (single and batch), update, list, follow, statistics |
+| `UrlReputation` | `src/domain/url-reputation.js` | Optional Safe Browsing lookup, fail-open |
 | `Slug`, `Visitor`, `LinkError` | `src/domain/` | Codes and reserved words, visitor hashing and device classes, errors |
 | `QrCode`, `PngEncoder` | `src/qr/qr-code.js` | QR encoder (ISO/IEC 18004, level M, v1–10), grayscale PNG writer |
 | `ShortlinkApi`, `ApiKeyAuth`, `Schemas`, `Views`, `PreviewPage` | `src/http/` | Fastify routes, roles, shapes, preview HTML |
@@ -126,7 +129,6 @@ Class-based; dependencies are injected through constructors, `src/application.js
 - Geolocation of visitors: needs a GeoIP database and stores more than this service wants to; derive it downstream from your proxy logs if you must.
 - Password-protected links and link-level access control: put such links behind your application, which then calls this service.
 - QR codes above 213 bytes, logos or colours: shorten first, style the SVG downstream.
-- Bulk import: loop over `POST /v1/links`; the per-key rate limit (600/min) is the only bound.
 
 ## Audit events
 

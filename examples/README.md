@@ -5,6 +5,7 @@ Scenario-driven walkthroughs of every feature. Requests to `/v1/*` need `Authori
 | Example | Shows |
 |---|---|
 | [Creating links](creating-links.md) | Random codes, custom slugs, tags and notes, what the response contains |
+| [Bulk import and unsafe URLs](batch-and-safe-browsing.md) | `POST /v1/links/batch` with per-item results, the optional Safe Browsing check |
 | [Redirects and the preview page](redirects.md) | 302 vs 301, `HEAD`, the `+` preview, what a visitor sees when a link is gone |
 | [Expiry and click limits](expiry-and-limits.md) | Time-limited and single-use links, disabling, statuses, what bots count for |
 | [QR codes](qr-codes.md) | SVG and PNG for a link or for any text, sizes, caching, printing |

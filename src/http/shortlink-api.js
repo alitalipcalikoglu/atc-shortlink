@@ -26,6 +26,7 @@ import { AuditMetrics } from '../audit-metrics.js';
 export class ShortlinkApi {
   static READY_CACHE_MS = 10_000;
   static QR_CACHE = 'public, max-age=86400';
+  static BATCH_BODY_LIMIT = 2 * 1024 * 1024;
 
   /**
    * @param {object} deps
@@ -132,9 +133,20 @@ export class ShortlinkApi {
     const code = (/** @type {FastifyRequest} */ r) => /** @type {{ code: string }} */ (r.params).code;
 
     api.post('/links', { config: { audit: AuditClient.route('atc-shortlink.link.create', (_r, b) => ({ type: 'link', id: b.link.code })) }, ...write, schema: { body: Schemas.create } }, async (request, reply) => {
+      await s.assertSafe(/** @type {{ url: string }} */ (request.body).url);
       const row = s.create(/** @type {any} */ (request.body), request.apiKeyId);
       reply.header('location', `/v1/links/${row.code}`);
       return reply.code(201).send({ link: this.views.link(row) });
+    });
+
+    api.post('/links/batch', {
+      config: { audit: AuditClient.route('atc-shortlink.link.batch', () => ({ type: 'links', id: 'batch' }), (_r, b) => ({ created: b?.created, failed: b?.failed, codes: (b?.results ?? []).filter((/** @type {any} */ x) => x.link).map((/** @type {any} */ x) => x.link.code) })) },
+      ...write, bodyLimit: ShortlinkApi.BATCH_BODY_LIMIT, schema: { body: Schemas.batch },
+    }, async (request) => {
+      const results = await s.createBatch(/** @type {{ links: any[] }} */ (request.body).links, request.apiKeyId);
+      const now = Date.now();
+      const created = results.filter((x) => 'link' in x).length;
+      return { created, failed: results.length - created, results: results.map((x) => ('link' in x ? { index: x.index, link: this.views.link(x.link, now) } : x)) };
     });
 
     api.get('/links', { ...read, schema: { querystring: Schemas.listQuery } }, async (request) => {
@@ -146,9 +158,11 @@ export class ShortlinkApi {
 
     api.get('/links/:code', { ...read, schema: { params: Schemas.codeParams } }, async (request) => ({ link: this.views.link(s.get(code(request))) }));
 
-    api.patch('/links/:code', { config: { audit: AuditClient.route('atc-shortlink.link.update', (r) => ({ type: 'link', id: /** @type {any} */ (r.params).code }), (r) => ({ patch: r.body })) }, ...write, schema: { params: Schemas.codeParams, body: Schemas.patch } }, async (request) => ({
-      link: this.views.link(s.update(code(request), /** @type {any} */ (request.body))),
-    }));
+    api.patch('/links/:code', { config: { audit: AuditClient.route('atc-shortlink.link.update', (r) => ({ type: 'link', id: /** @type {any} */ (r.params).code }), (r) => ({ patch: r.body })) }, ...write, schema: { params: Schemas.codeParams, body: Schemas.patch } }, async (request) => {
+      const body = /** @type {{ url?: string }} */ (request.body);
+      if (body.url !== undefined) await s.assertSafe(body.url);
+      return { link: this.views.link(s.update(code(request), /** @type {any} */ (body))) };
+    });
 
     api.delete('/links/:code', { config: { audit: AuditClient.route('atc-shortlink.link.delete', (r) => ({ type: 'link', id: /** @type {any} */ (r.params).code })) }, ...write, schema: { params: Schemas.codeParams } }, async (request, reply) => {
       s.remove(code(request));
@@ -190,6 +204,10 @@ export class ShortlinkApi {
         '# TYPE shortlink_links gauge',
         `shortlink_links{state="active"} ${c.active}`,
         `shortlink_links{state="inactive"} ${c.total - c.active}`,
+        ...(this.service.reputation ? [
+          '# HELP shortlink_safe_browsing_failures_total Safe Browsing lookups that failed (urls accepted unchecked).', '# TYPE shortlink_safe_browsing_failures_total counter', `shortlink_safe_browsing_failures_total ${this.service.reputation.failures}`,
+          '# HELP shortlink_safe_browsing_flagged_total URLs Safe Browsing flagged.', '# TYPE shortlink_safe_browsing_flagged_total counter', `shortlink_safe_browsing_flagged_total ${this.service.reputation.flagged}`,
+        ] : []),
         '# HELP shortlink_clicks_total Counted clicks over all links (bots excluded).',
         '# TYPE shortlink_clicks_total gauge',
         `shortlink_clicks_total ${c.clicks}`,

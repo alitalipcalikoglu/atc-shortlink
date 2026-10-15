@@ -30,6 +30,7 @@ import { Visitor } from './visitor.js';
 /** Use-cases: create, update, delete, list, resolve for redirect, record clicks, statistics. */
 export class LinkService {
   static CODE_ATTEMPTS = 5;
+  static BATCH_MAX = 500;
 
   /**
    * @param {object} deps
@@ -38,8 +39,10 @@ export class LinkService {
    * @param {ClickStore} deps.clicks
    * @param {Visitor} deps.visitor
    * @param {ServiceOptions} deps.options
+   * @param {import('./url-reputation.js').UrlReputation|null} [deps.reputation]  Safe Browsing check; null = off.
    */
-  constructor({ db, links, clicks, visitor, options }) {
+  constructor({ db, links, clicks, visitor, options, reputation = null }) {
+    this.reputation = reputation;
     this.db = db;
     this.links = links;
     this.clicks = clicks;
@@ -72,6 +75,37 @@ export class LinkService {
       return this.links.insert({ code, ...base });
     }
     throw new Error(`could not find a free ${this.options.codeLength}-character code after ${LinkService.CODE_ATTEMPTS} attempts; raise CODE_LENGTH`);
+  }
+
+  /**
+   * Refuse a URL that Safe Browsing lists (no-op without SAFE_BROWSING_API_KEY; fail-open).
+   * @param {string} url
+   */
+  async assertSafe(url) {
+    const flagged = this.reputation ? await this.reputation.check([url]) : new Map();
+    const threat = flagged.get(url);
+    if (threat) throw new LinkError('URL_UNSAFE', `url is listed by Safe Browsing (${threat})`, { threat });
+  }
+
+  /**
+   * Create many links in one call; every item succeeds or fails on its own.
+   * @param {LinkInput[]} inputs  At most BATCH_MAX.
+   * @param {string} createdBy
+   * @param {number} [now]
+   * @returns {Promise<({ index: number, link: LinkRow } | { index: number, error: { code: string, message: string } })[]>}
+   */
+  async createBatch(inputs, createdBy, now = Date.now()) {
+    const flagged = this.reputation ? await this.reputation.check(inputs.map((i) => i.url)) : new Map();
+    return inputs.map((input, index) => {
+      try {
+        const threat = flagged.get(input.url);
+        if (threat) throw new LinkError('URL_UNSAFE', `url is listed by Safe Browsing (${threat})`, { threat });
+        return { index, link: this.create(input, createdBy, now) };
+      } catch (err) {
+        if (err instanceof LinkError) return { index, error: { code: err.code, message: err.message } };
+        throw err;
+      }
+    });
   }
 
   /** @param {string} code */

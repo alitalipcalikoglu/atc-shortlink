@@ -19,6 +19,8 @@ export class Schemas {
     url: Schemas.url, slug: Schemas.code, permanent: { type: 'boolean' }, expiresAt: Schemas.expiresAt, maxClicks: Schemas.maxClicks, tags: Schemas.tags, note: Schemas.note,
   });
 
+  static batch = Schemas.body(['links'], { links: { type: 'array', minItems: 1, maxItems: 500, items: Schemas.create } });
+
   static patch = {
     type: 'object', additionalProperties: false, minProperties: 1,
     properties: { url: Schemas.url, permanent: { type: 'boolean' }, enabled: { type: 'boolean' }, expiresAt: Schemas.expiresAt, maxClicks: Schemas.maxClicks, tags: Schemas.tags, note: Schemas.note },

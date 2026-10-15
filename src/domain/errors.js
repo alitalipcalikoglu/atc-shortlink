@@ -10,6 +10,7 @@ export class LinkError extends Error {
     SLUG_RESERVED: 400,
     INVALID_URL: 400,
     HOST_BLOCKED: 400,
+    URL_UNSAFE: 400,
     INVALID_EXPIRY: 400,
     QR_TOO_LONG: 400,
     INVALID_CURSOR: 400,

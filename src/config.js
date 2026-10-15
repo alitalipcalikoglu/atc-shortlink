@@ -31,6 +31,8 @@ export class Config {
     this.clickRawDays = v.clickRawDays;
     this.clickFlushMs = v.clickFlushMs;
     this.blockedHosts = v.blockedHosts;
+    this.safeBrowsingApiKey = v.safeBrowsingApiKey;
+    this.safeBrowsingTimeoutMs = v.safeBrowsingTimeoutMs;
     this.maxUrlLength = v.maxUrlLength;
     this.defaultPermanent = v.defaultPermanent;
     if (this.clickRawDays > this.clickRetentionDays) throw new ConfigError('CLICK_RAW_DAYS must not exceed CLICK_RETENTION_DAYS');
@@ -81,6 +83,8 @@ export class Config {
       blockedHosts: r.optional('BLOCKED_HOSTS').split(',').map((h) => h.trim().toLowerCase()).filter(Boolean),
       maxUrlLength: r.integer('MAX_URL_LENGTH', 2_048, { min: 64, max: 8_192 }),
       defaultPermanent: r.boolean('DEFAULT_PERMANENT', false),
+      safeBrowsingApiKey: r.optional('SAFE_BROWSING_API_KEY') || null,
+      safeBrowsingTimeoutMs: r.integer('SAFE_BROWSING_TIMEOUT_MS', 3_000, { min: 200, max: 30_000 }),
     });
   }
 

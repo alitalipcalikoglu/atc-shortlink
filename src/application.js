@@ -3,6 +3,7 @@ import { AuditClient } from '@atc-web/atc-service-core/audit';
 import { readServiceVersion } from '@atc-web/atc-service-core/fastify';
 import { Lifecycle } from '@atc-web/atc-service-core/lifecycle';
 import { Database } from './db.js';
+import { UrlReputation } from './domain/url-reputation.js';
 import { LinkService } from './domain/link-service.js';
 import { Visitor } from './domain/visitor.js';
 import { ShortlinkApi } from './http/shortlink-api.js';
@@ -25,6 +26,7 @@ export class Application {
     this.clicks = new ClickStore(this.db);
     this.service = new LinkService({
       db: this.db, links: this.links, clicks: this.clicks, visitor: new Visitor(config.hashSecret),
+      reputation: config.safeBrowsingApiKey ? new UrlReputation({ apiKey: config.safeBrowsingApiKey, timeoutMs: config.safeBrowsingTimeoutMs, log: /** @type {any} */ (console) }) : null,
       options: { codeLength: config.codeLength, publicHost: config.publicHost, blockedHosts: config.blockedHosts, maxUrlLength: config.maxUrlLength, defaultPermanent: config.defaultPermanent },
     });
     /** @type {import('fastify').FastifyInstance|null} */
@@ -53,6 +55,7 @@ export class Application {
     const api = new ShortlinkApi({ config, audit: this.audit, service: this.service, links: this.links, clicks: this.clicks, db: this.db, version: this.version });
     const app = await api.build();
     this.app = app;
+    if (this.service.reputation) this.service.reputation.log = app.log.child({ component: 'safe-browsing' });
     this.maintenance = new Maintenance({ clicks: this.clicks, log: app.log.child({ component: 'maintenance' }), options: { clickRetentionDays: config.clickRetentionDays, clickRawDays: config.clickRawDays } });
     this.clicks.start(config.clickFlushMs);
     const { shutdown } = Lifecycle.install({
