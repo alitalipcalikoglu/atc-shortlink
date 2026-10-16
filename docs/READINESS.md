@@ -15,6 +15,10 @@ behind API keys.
   audit service never slows down or fails a shortlink request. Buffered-and-unflushed events are
   lost on an ungraceful restart (no on-disk queue).
 
+- Google Safe Browsing Lookup API v4 (`SAFE_BROWSING_API_KEY`, `SAFE_BROWSING_TIMEOUT_MS`):
+  optional. New and changed destinations are checked and refused when listed; fail-open, an
+  unreachable API accepts the URL. Empty key = no check.
+
 No other service or external system is called by `atc-shortlink`. It never fetches redirect
 destinations itself (`LinkService.#url` only validates the URL's shape).
 
@@ -93,6 +97,10 @@ permanently (logged), a 429/5xx/network error/timeout keeps it in the buffer for
   SLUG_TAKEN`. Without a `slug` (random code), every call by definition creates a new, different
   link — there is no idempotency key to make retries safe, so a client retrying a timed-out create
   request risks creating a duplicate link for the same URL.
+- `POST /v1/links` and `POST /v1/links/batch` accept an optional `Idempotency-Key` header
+  (`@atc-web/atc-service-core/idempotency`, v1.30): a repeat with the same key, caller and body
+  replays the stored `201` with `Idempotent-Replayed: true`, so a timed-out create retried with the
+  header creates no duplicate.
 - `PATCH /v1/links/:code` is idempotent in result for a fixed patch (same end state on repeat).
 - `DELETE /v1/links/:code` is **not** safe to repeat: `LinkService.remove` throws `404
   LINK_NOT_FOUND` on the second call rather than treating it as a no-op.
