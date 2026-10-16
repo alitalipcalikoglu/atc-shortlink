@@ -190,6 +190,8 @@ paths:
   /v1/links:
     post:
       operationId: atc-shortlink.links.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
       summary: Create a short link
       description: |
         Requires the `write` role. `slug` is optional — omitted, a random unbiased base62 code of
@@ -281,6 +283,8 @@ paths:
   /v1/links/batch:
     post:
       operationId: atc-shortlink.links.batch
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
       summary: Create many short links
       description: |
         Requires the `write` role. 1-500 items, each shaped like `POST /v1/links`. Items are
@@ -691,6 +695,12 @@ components:
         response header. Recognized key lacking the role a route requires: `403 FORBIDDEN`.
 
   parameters:
+    IdempotencyKeyHeader:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: "Optional. Repeats of this POST with the same key (per API key, 24 h) replay the first 2xx answer with `Idempotent-Replayed: true` instead of running again; the same key with another method, path or body is `409 IDEMPOTENCY_MISMATCH`, while the first still runs `409 IDEMPOTENCY_IN_PROGRESS`."
+      schema: { type: string, pattern: '^[A-Za-z0-9._:-]{8,255}$' }
     CodeParam:
       name: code
       in: path

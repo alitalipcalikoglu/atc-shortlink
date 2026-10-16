@@ -4,6 +4,7 @@ import rateLimit from '@fastify/rate-limit';
 import Fastify from 'fastify';
 import { AuditClient } from '@atc-web/atc-service-core/audit';
 import { createErrorHandler, registerInfo, registerOpenApi, registerProbes, registerRequestContext, requestOptions } from '@atc-web/atc-service-core/fastify';
+import { Idempotency } from '@atc-web/atc-service-core/idempotency';
 import { LinkError } from '../domain/errors.js';
 import { LinkService } from '../domain/link-service.js';
 import { Slug } from '../domain/slug.js';
@@ -79,6 +80,8 @@ export class ShortlinkApi {
       reply.header('x-content-type-options', 'nosniff');
       if (!reply.hasHeader('cache-control')) reply.header('cache-control', 'no-store');
     });
+    // Opt-in per route (config.idempotent): repeats with the same Idempotency-Key replay the first 2xx answer.
+    Idempotency.register(app, { raw: this.db.raw });
     registerProbes(app, () => this.db.ping(), { cacheMs: ShortlinkApi.READY_CACHE_MS });
     registerOpenApi(app, new URL('../../openapi.yaml', import.meta.url));
     registerInfo(app, {
@@ -132,7 +135,7 @@ export class ShortlinkApi {
     const write = { preHandler: ApiKeyAuth.require('write') };
     const code = (/** @type {FastifyRequest} */ r) => /** @type {{ code: string }} */ (r.params).code;
 
-    api.post('/links', { config: { audit: AuditClient.route('atc-shortlink.link.create', (_r, b) => ({ type: 'link', id: b.link.code })) }, ...write, schema: { body: Schemas.create } }, async (request, reply) => {
+    api.post('/links', { config: { idempotent: true, audit: AuditClient.route('atc-shortlink.link.create', (_r, b) => ({ type: 'link', id: b.link.code })) }, ...write, schema: { body: Schemas.create } }, async (request, reply) => {
       await s.assertSafe(/** @type {{ url: string }} */ (request.body).url);
       const row = s.create(/** @type {any} */ (request.body), request.apiKeyId);
       reply.header('location', `/v1/links/${row.code}`);
@@ -140,7 +143,7 @@ export class ShortlinkApi {
     });
 
     api.post('/links/batch', {
-      config: { audit: AuditClient.route('atc-shortlink.link.batch', () => ({ type: 'links', id: 'batch' }), (_r, b) => ({ created: b?.created, failed: b?.failed, codes: (b?.results ?? []).filter((/** @type {any} */ x) => x.link).map((/** @type {any} */ x) => x.link.code) })) },
+      config: { idempotent: true, audit: AuditClient.route('atc-shortlink.link.batch', () => ({ type: 'links', id: 'batch' }), (_r, b) => ({ created: b?.created, failed: b?.failed, codes: (b?.results ?? []).filter((/** @type {any} */ x) => x.link).map((/** @type {any} */ x) => x.link.code) })) },
       ...write, bodyLimit: ShortlinkApi.BATCH_BODY_LIMIT, schema: { body: Schemas.batch },
     }, async (request) => {
       const results = await s.createBatch(/** @type {{ links: any[] }} */ (request.body).links, request.apiKeyId);

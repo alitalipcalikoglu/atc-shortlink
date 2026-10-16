@@ -86,6 +86,12 @@ const { link } = await res.json();
 // link.shortUrl → put in the SMS; link.qrUrl + '?format=png&scale=6' → put on the PDF
 ```
 
+## Conventions
+
+- Lists answer `{ items, nextCursor }`; pass `nextCursor` back as `cursor`.
+- `POST /v1/links` and `POST /v1/links/batch` honour `Idempotency-Key`: a repeat with the same key (per API key and caller, 24 h) replays the first 2xx answer with `Idempotent-Replayed: true` instead of creating again; the same key with another body is `409 IDEMPOTENCY_MISMATCH`.
+- Link codes are natural keys chosen by people or generated short codes; they are not in the platform's `<prefix>_<time><random>` id format by design (they are part of public URLs).
+
 ## Examples
 
 Scenario walkthroughs for every feature live in [examples/](examples/README.md).

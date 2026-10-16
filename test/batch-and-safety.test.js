@@ -79,3 +79,13 @@ test('POST /v1/links/batch: per-item results, one Safe Browsing lookup, write ro
   assert.equal(bigRes.json().created, 300, 'larger than BODY_LIMIT is fine on the batch route');
   await app.close();
 });
+
+test('Idempotency-Key: a retried create replays instead of making a second link', async () => {
+  const { app } = await buildApp();
+  const h = { ...bearer(RW_KEY), 'idempotency-key': 'create-link-1' };
+  const a = await app.inject({ method: 'POST', url: '/v1/links', headers: h, payload: { url: 'https://example.com/a' } });
+  const b = await app.inject({ method: 'POST', url: '/v1/links', headers: h, payload: { url: 'https://example.com/a' } });
+  assert.deepEqual([a.statusCode, b.statusCode, b.headers['idempotent-replayed'], b.json().link.code], [201, 201, 'true', a.json().link.code]);
+  assert.equal((await app.inject({ method: 'POST', url: '/v1/links', headers: h, payload: { url: 'https://example.com/b' } })).json().error.code, 'IDEMPOTENCY_MISMATCH');
+  await app.close();
+});
